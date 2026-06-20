@@ -98,6 +98,16 @@
   .auth-logout{font-size:0.65rem;color:var(--muted);cursor:pointer;text-decoration:underline;margin-left:4px;}
   .auth-logout:hover{color:var(--mythic);}
   .sync-badge{font-size:0.6rem;padding:1px 6px;border-radius:6px;background:#5865f222;color:#5865f2;border:1px solid #5865f244;margin-left:4px;}
+  .modal-overlay{position:fixed;inset:0;background:#000000aa;z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .modal-overlay.hidden{display:none;}
+  .modal-box{background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:20px;max-width:300px;width:100%;box-shadow:0 8px 32px #00000088;}
+  .modal-title{font-weight:700;font-size:0.95rem;margin-bottom:6px;color:var(--text);}
+  .modal-msg{font-size:0.8rem;color:var(--muted);margin-bottom:18px;line-height:1.5;}
+  .modal-btns{display:flex;gap:8px;}
+  .modal-cancel{flex:1;padding:9px;border-radius:10px;border:1.5px solid var(--border);background:none;color:var(--muted);font-size:0.78rem;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;}
+  .modal-cancel:hover{border-color:var(--text);color:var(--text);}
+  .modal-confirm{flex:1;padding:9px;border-radius:10px;border:1.5px solid var(--mythic);background:#ff444415;color:var(--mythic);font-size:0.78rem;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;}
+  .modal-confirm:hover{background:#ff444430;}
 </style>
 </head>
 <body>
@@ -255,9 +265,9 @@ let islandSearch='';
 function save(){localStorage.setItem('httyd_v3_timers',JSON.stringify(timers));localStorage.setItem('httyd_v3_spiral',JSON.stringify(spiralData));}
 function fmt(ms){if(ms<=0)return null;const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000),s=Math.floor((ms%60000)/1000);return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;}
 function switchTab(tab){['islands','map','spiral'].forEach(t=>document.getElementById(t+'Tab').classList.toggle('active',t===tab));document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['islands','map','spiral'][i]===tab));if(tab==='map')renderMapPins();}
-function toggleIsland(name){if(timers[name]){delete timers[name];apiReset(name);}else{timers[name]=Date.now();apiCollect(name);}save();renderIslands();renderMapPins();}
+function toggleIsland(name){if(timers[name]){showModal('Reset Cooldown','Reset cooldown for '+name+'?',()=>{delete timers[name];apiReset(name);save();renderIslands();renderMapPins();});}else{timers[name]=Date.now();apiCollect(name);save();renderIslands();renderMapPins();}}
 function collectAll(){const now=Date.now();ISLANDS.filter(i=>i.spots>0&&!i.isSpiral).forEach(i=>{timers[i.name]=now;apiCollect(i.name);});save();renderIslands();renderMapPins();}
-function resetAll(){if(currentUser){ISLANDS.filter(i=>i.spots>0&&!i.isSpiral).forEach(i=>apiReset(i.name));}timers={};save();renderIslands();renderMapPins();}
+function resetAll(){showModal('Reset All Cooldowns','This will clear all island cooldowns. Are you sure?',()=>{if(currentUser){ISLANDS.filter(i=>i.spots>0&&!i.isSpiral).forEach(i=>apiReset(i.name));}timers={};save();renderIslands();renderMapPins();});}
 function renderIslands(){
   const now=Date.now(),q=islandSearch.toLowerCase();
   const filtered=ISLANDS.filter(i=>!q||i.name.toLowerCase().includes(q)||i.spawns.some(s=>s.egg.toLowerCase().includes(q)));
@@ -338,7 +348,7 @@ async function fetchSightings(){
 function fmtAgo(ms){const m=Math.floor(ms/60000);if(m<1)return 'just now';if(m<60)return `${m}m ago`;return `${Math.floor(m/60)}h ${m%60}m ago`;}
 function markSpawned(c){spiralData[c].spawnedAt=Date.now();save();renderSpiral();}
 function markPickedUp(c){spiralData[c].pickedAt=Date.now();spiralData[c].spawnedAt=null;save();renderSpiral();}
-function resetSpiral(c){spiralData[c]={spawnedAt:null,pickedAt:null};save();renderSpiral();}
+function resetSpiral(c){showModal('Reset Spiral Timer','Reset this spiral egg timer?',()=>{spiralData[c]={spawnedAt:null,pickedAt:null};save();renderSpiral();});}
 function renderSpiral(){
   const now=Date.now();
   document.getElementById('spiralCards').innerHTML=SC.map(({key,label,cls})=>{
@@ -361,7 +371,27 @@ function tick(){
   const n=new Date(),mins=n.getMinutes(),secs=n.getSeconds();
   const el=document.getElementById('nextCheckTimer');if(el)el.textContent=fmt((mins<30?30-mins:60-mins)*60000-secs*1000)||'00:00:00';
 }
+let _modalCallback=null;
+function showModal(title,msg,cb){
+  document.getElementById('modalTitle').textContent=title;
+  document.getElementById('modalMsg').textContent=msg;
+  document.getElementById('confirmModal').classList.remove('hidden');
+  _modalCallback=cb;
+  document.getElementById('modalConfirmBtn').onclick=()=>{closeModal();cb();};
+}
+function closeModal(){document.getElementById('confirmModal').classList.add('hidden');_modalCallback=null;}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 checkAuth();renderIslands();renderSpiral();setInterval(tick,1000);tick();fetchSightings();setInterval(fetchSightings,30000);
 </script>
+<div class="modal-overlay hidden" id="confirmModal">
+  <div class="modal-box">
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-msg" id="modalMsg"></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-confirm" id="modalConfirmBtn">Reset</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
