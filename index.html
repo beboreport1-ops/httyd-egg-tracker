@@ -247,7 +247,7 @@ async function fetchSightings(){
 
 function fmtAgo(ms){const m=Math.floor(ms/60000);if(m<1)return 'just now';if(m<60)return `${m}m ago`;return `${Math.floor(m/60)}h ${m%60}m ago`;}
 function markSpawned(c){spiralData[c].spawnedAt=Date.now();save();renderSpiral();}
-function markPickedUp(c){spiralData[c].pickedAt=Date.now();spiralData[c].spawnedAt=null;discordSightings[c]=null;save();renderSpiral();}
+function markPickedUp(c){spiralData[c].pickedAt=Date.now();spiralData[c].spawnedAt=null;save();renderSpiral();}
 function resetSpiral(c){spiralData[c]={spawnedAt:null,pickedAt:null};save();renderSpiral();}
 function renderSpiral(){
   const now=Date.now();
@@ -255,12 +255,12 @@ function renderSpiral(){
     const d=spiralData[key],s=discordSightings[key];
     const DESPAWN=50*60000;const isSpawned=d.spawnedAt&&(now-d.spawnedAt)<DESPAWN;const hasActiveSighting=!!(s&&s.age<DESPAWN);
     const spawnLeft=d.spawnedAt?fmt(DESPAWN-(now-d.spawnedAt)):null,cdLeft=d.pickedAt?fmt(6*3600000-(now-d.pickedAt)):null;
-    const isOnCooldown=!!(d.pickedAt&&(6*3600000-(now-d.pickedAt))>0);const phase=isOnCooldown?`<span class="phase-badge waiting">🥚 Collected</span>`:isSpawned||hasActiveSighting?`<span class="phase-badge spawned">✅ SPAWNED</span>`:`<span class="phase-badge waiting">⏳ Waiting</span>`;
+    const phase=isSpawned||hasActiveSighting?`<span class="phase-badge spawned">✅ SPAWNED</span>`:`<span class="phase-badge waiting">⏳ Waiting</span>`;
     const spawnBox=isSpawned&&spawnLeft?`<div class="timer-box"><div class="timer-box-label">⏰ Despawns in</div><div class="timer-box-value active-time" id="sp_${key}">${spawnLeft}</div></div>`:hasActiveSighting?`<div class="timer-box"><div class="timer-box-label">⏰ Despawns in</div><div class="timer-box-value active-time" id="sp_${key}">${fmt(50*60000-(now-s.spottedAt))||'—'}</div></div>`:`<div class="timer-box"><div class="timer-box-label">⏰ Despawns in</div><div class="timer-box-value expired">—</div></div>`;
     const cdBox=cdLeft?`<div class="timer-box"><div class="timer-box-label">🔒 Your cooldown</div><div class="timer-box-value cooldown-time" id="scd_${key}">${cdLeft}</div></div>`:`<div class="timer-box"><div class="timer-box-label">🔒 Your cooldown</div><div class="timer-box-value expired">${d.pickedAt?'✅ Ready':'—'}</div></div>`;
     const discordRow=s?`<div class="discord-sighting fresh"><span class="ds-icon">💬</span><div class="ds-text">Spotted by <strong>${s.reportedBy}</strong> in Discord</div><span class="ds-time">${fmtAgo(s.age)}</span></div>`:'';
     const spawnBtn='';
-    const pickupBtn=isSpawned||hasActiveSighting?`<button class="spiral-btn pickup" onclick="markPickedUp('${key}')">🥚 Picked up</button>`:'';
+    const isOnCooldown=!!(d.pickedAt&&(6*3600000-(now-d.pickedAt))>0);const pickupBtn=isOnCooldown?`<button class="spiral-btn pickup" style="opacity:0.6;cursor:default;pointer-events:none">✅ Claimed</button>`:isSpawned||hasActiveSighting?`<button class="spiral-btn pickup" onclick="markPickedUp('${key}')">🥚 Picked up</button>`:'`';
     return `<div class="spiral-card ${cls}"><div class="spiral-header"><div class="spiral-name">${label}</div>${phase}</div>${discordRow}<div class="spiral-timers">${spawnBox}${cdBox}</div><div class="spiral-btns">${spawnBtn}${pickupBtn}<button class="spiral-btn reset" onclick="resetSpiral('${key}')">↺ Reset</button></div></div>`;
   }).join('');
 }
