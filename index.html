@@ -205,7 +205,11 @@ function renderMapPins(){
     pin.className='map-pin'+(island.spots===0?' no-eggs-pin':'');
     pin.style.left=island.mx+'%';pin.style.top=island.my+'%';
     if(island.spots===0)pin.textContent='⬜';
-    else if(island.isSpiral)pin.textContent='🌀';
+    else if(island.isSpiral){
+      const DESPAWN=50*60000;
+      const hasSpawned=Object.values(discordSightings).some(s=>s&&s.spottedAt&&(Date.now()-s.spottedAt)<DESPAWN);
+      pin.textContent=hasSpawned?'🌀🥚':'🌀';
+    }
     else if(onCooldown)pin.textContent='✅';
     else if(isReady)pin.textContent='🟢';
     else pin.textContent='📍';
