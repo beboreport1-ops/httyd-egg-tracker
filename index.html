@@ -83,6 +83,12 @@
   .spiral-btn.spawn{border-color:var(--common);color:var(--common);}
   .spiral-btn.pickup{border-color:var(--legendary);color:var(--legendary);}
   .spiral-btn.reset:hover{border-color:var(--mythic);color:var(--mythic);}
+  .discord-sighting{display:flex;align-items:center;gap:8px;background:#5865f211;border:1px solid #5865f244;border-radius:8px;padding:7px 10px;margin-bottom:10px;font-size:0.7rem;}
+  .discord-sighting .ds-icon{font-size:1rem;flex-shrink:0;}
+  .discord-sighting .ds-text{color:var(--muted);line-height:1.4;}
+  .discord-sighting .ds-text strong{color:var(--text);}
+  .discord-sighting .ds-time{color:var(--muted);font-size:0.62rem;margin-left:auto;flex-shrink:0;}
+  .discord-sighting.fresh .ds-text strong{color:var(--common);}
 </style>
 </head>
 <body>
@@ -212,20 +218,45 @@ function renderMapPins(){
   });
 }
 const SC=[{key:'yellow',label:'🟡 Yellow Spiral Egg',cls:'yellow'},{key:'blue',label:'🔵 Blue Spiral Egg',cls:'blue'},{key:'red',label:'🔴 Red Spiral Egg',cls:'red'}];
+const API_URL='https://spiral-logger--beboreport1.replit.app/api/spiral-sightings';
+let discordSightings={yellow:null,blue:null,red:null};
+
+async function fetchSightings(){
+  try{
+    const res=await fetch(API_URL);
+    const data=await res.json();
+    const fresh={yellow:null,blue:null,red:null};
+    if(data.sightings){
+      data.sightings.forEach(s=>{
+        const key=s.color.toLowerCase();
+        if(!fresh[key]){
+          const age=Date.now()-new Date(s.createdAt).getTime();
+          if(age<3600000) fresh[key]={...s,age};
+        }
+      });
+    }
+    discordSightings=fresh;
+    renderSpiral();
+  }catch(e){}
+}
+
+function fmtAgo(ms){const m=Math.floor(ms/60000);if(m<1)return 'just now';if(m<60)return `${m}m ago`;return `${Math.floor(m/60)}h ${m%60}m ago`;}
 function markSpawned(c){spiralData[c].spawnedAt=Date.now();save();renderSpiral();}
 function markPickedUp(c){spiralData[c].pickedAt=Date.now();spiralData[c].spawnedAt=null;save();renderSpiral();}
 function resetSpiral(c){spiralData[c]={spawnedAt:null,pickedAt:null};save();renderSpiral();}
 function renderSpiral(){
   const now=Date.now();
   document.getElementById('spiralCards').innerHTML=SC.map(({key,label,cls})=>{
-    const d=spiralData[key],isSpawned=d.spawnedAt&&(now-d.spawnedAt)<3600000;
-    const spawnLeft=d.spawnedAt?fmt(3600000-(now-d.spawnedAt)):null,cdLeft=d.pickedAt?fmt(6*3600000-(now-d.pickedAt)):null;
-    const phase=isSpawned?`<span class="phase-badge spawned">✅ SPAWNED</span>`:`<span class="phase-badge waiting">⏳ Waiting</span>`;
-    const spawnBox=isSpawned&&spawnLeft?`<div class="timer-box"><div class="timer-box-label">⏰ Despawns in</div><div class="timer-box-value active-time" id="sp_${key}">${spawnLeft}</div></div>`:`<div class="timer-box"><div class="timer-box-label">⏰ Despawns in</div><div class="timer-box-value expired">—</div></div>`;
+    const d=spiralData[key],s=discordSightings[key];
+    const DESPAWN=50*60000;const isSpawned=d.spawnedAt&&(now-d.spawnedAt)<DESPAWN;const hasActiveSighting=!!(s&&s.age<DESPAWN);
+    const spawnLeft=d.spawnedAt?fmt(DESPAWN-(now-d.spawnedAt)):null,cdLeft=d.pickedAt?fmt(6*3600000-(now-d.pickedAt)):null;
+    const phase=isSpawned||hasActiveSighting?`<span class="phase-badge spawned">✅ SPAWNED</span>`:`<span class="phase-badge waiting">⏳ Waiting</span>`;
+    const spawnBox=isSpawned&&spawnLeft?`<div class="timer-box"><div class="timer-box-label">⏰ Despawns in</div><div class="timer-box-value active-time" id="sp_${key}">${spawnLeft}</div></div>`:s?`<div class="timer-box"><div class="timer-box-label">⏰ Despawns in</div><div class="timer-box-value active-time" id="sp_${key}">${fmt(3600000-s.age)||'—'}</div></div>`:`<div class="timer-box"><div class="timer-box-label">⏰ Despawns in</div><div class="timer-box-value expired">—</div></div>`;
     const cdBox=cdLeft?`<div class="timer-box"><div class="timer-box-label">🔒 Your cooldown</div><div class="timer-box-value cooldown-time" id="scd_${key}">${cdLeft}</div></div>`:`<div class="timer-box"><div class="timer-box-label">🔒 Your cooldown</div><div class="timer-box-value expired">${d.pickedAt?'✅ Ready':'—'}</div></div>`;
-    const spawnBtn=!isSpawned?`<button class="spiral-btn spawn" onclick="markSpawned('${key}')">✅ Spawned!</button>`:'';
-    const pickupBtn=isSpawned?`<button class="spiral-btn pickup" onclick="markPickedUp('${key}')">🥚 Picked up</button>`:'';
-    return `<div class="spiral-card ${cls}"><div class="spiral-header"><div class="spiral-name">${label}</div>${phase}</div><div class="spiral-timers">${spawnBox}${cdBox}</div><div class="spiral-btns">${spawnBtn}${pickupBtn}<button class="spiral-btn reset" onclick="resetSpiral('${key}')">↺ Reset</button></div></div>`;
+    const discordRow=s?`<div class="discord-sighting fresh"><span class="ds-icon">💬</span><div class="ds-text">Spotted by <strong>${s.reportedBy}</strong> in Discord</div><span class="ds-time">${fmtAgo(s.age)}</span></div>`:'';
+    const spawnBtn='';
+    const pickupBtn=isSpawned||hasActiveSighting?`<button class="spiral-btn pickup" onclick="markPickedUp('${key}')">🥚 Picked up</button>`:'';
+    return `<div class="spiral-card ${cls}"><div class="spiral-header"><div class="spiral-name">${label}</div>${phase}</div>${discordRow}<div class="spiral-timers">${spawnBox}${cdBox}</div><div class="spiral-btns">${spawnBtn}${pickupBtn}<button class="spiral-btn reset" onclick="resetSpiral('${key}')">↺ Reset</button></div></div>`;
   }).join('');
 }
 function tick(){
@@ -235,7 +266,7 @@ function tick(){
   const n=new Date(),mins=n.getMinutes(),secs=n.getSeconds();
   const el=document.getElementById('nextCheckTimer');if(el)el.textContent=fmt((mins<30?30-mins:60-mins)*60000-secs*1000)||'00:00:00';
 }
-renderIslands();renderSpiral();setInterval(tick,1000);tick();
+renderIslands();renderSpiral();setInterval(tick,1000);tick();fetchSightings();setInterval(fetchSightings,30000);
 </script>
 </body>
 </html>
