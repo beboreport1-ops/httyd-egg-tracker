@@ -230,8 +230,9 @@ async function fetchSightings(){
       data.sightings.forEach(s=>{
         const key=s.color.toLowerCase();
         if(!fresh[key]){
-          const age=Date.now()-new Date(s.createdAt).getTime();
-          if(age<3600000) fresh[key]={...s,age};
+          const spottedAt=new Date(s.createdAt).getTime();
+          const age=Date.now()-spottedAt;
+          if(age<50*60000) fresh[key]={...s,spottedAt,age};
         }
       });
     }
@@ -251,7 +252,7 @@ function renderSpiral(){
     const DESPAWN=50*60000;const isSpawned=d.spawnedAt&&(now-d.spawnedAt)<DESPAWN;const hasActiveSighting=!!(s&&s.age<DESPAWN);
     const spawnLeft=d.spawnedAt?fmt(DESPAWN-(now-d.spawnedAt)):null,cdLeft=d.pickedAt?fmt(6*3600000-(now-d.pickedAt)):null;
     const phase=isSpawned||hasActiveSighting?`<span class="phase-badge spawned">✅ SPAWNED</span>`:`<span class="phase-badge waiting">⏳ Waiting</span>`;
-    const spawnBox=isSpawned&&spawnLeft?`<div class="timer-box"><div class="timer-box-label">⏰ Despawns in</div><div class="timer-box-value active-time" id="sp_${key}">${spawnLeft}</div></div>`:s?`<div class="timer-box"><div class="timer-box-label">⏰ Despawns in</div><div class="timer-box-value active-time" id="sp_${key}">${fmt(3600000-s.age)||'—'}</div></div>`:`<div class="timer-box"><div class="timer-box-label">⏰ Despawns in</div><div class="timer-box-value expired">—</div></div>`;
+    const spawnBox=isSpawned&&spawnLeft?`<div class="timer-box"><div class="timer-box-label">⏰ Despawns in</div><div class="timer-box-value active-time" id="sp_${key}">${spawnLeft}</div></div>`:hasActiveSighting?`<div class="timer-box"><div class="timer-box-label">⏰ Despawns in</div><div class="timer-box-value active-time" id="sp_${key}">${fmt(50*60000-(now-s.spottedAt))||'—'}</div></div>`:`<div class="timer-box"><div class="timer-box-label">⏰ Despawns in</div><div class="timer-box-value expired">—</div></div>`;
     const cdBox=cdLeft?`<div class="timer-box"><div class="timer-box-label">🔒 Your cooldown</div><div class="timer-box-value cooldown-time" id="scd_${key}">${cdLeft}</div></div>`:`<div class="timer-box"><div class="timer-box-label">🔒 Your cooldown</div><div class="timer-box-value expired">${d.pickedAt?'✅ Ready':'—'}</div></div>`;
     const discordRow=s?`<div class="discord-sighting fresh"><span class="ds-icon">💬</span><div class="ds-text">Spotted by <strong>${s.reportedBy}</strong> in Discord</div><span class="ds-time">${fmtAgo(s.age)}</span></div>`:'';
     const spawnBtn='';
@@ -262,7 +263,7 @@ function renderSpiral(){
 function tick(){
   const now=Date.now();
   ISLANDS.forEach(island=>{const claimedAt=timers[island.name];if(!claimedAt)return;const remaining=6*3600000-(now-claimedAt);const el=document.getElementById('it_'+island.num);if(el){const cd=fmt(remaining);if(cd)el.textContent=cd;else renderIslands();}});
-  SC.forEach(({key})=>{const d=spiralData[key];const spEl=document.getElementById('sp_'+key);if(spEl&&d.spawnedAt){const left=3600000-(now-d.spawnedAt);const cd=fmt(left);if(cd)spEl.textContent=cd;else{spiralData[key].spawnedAt=null;save();renderSpiral();}}const cdEl=document.getElementById('scd_'+key);if(cdEl&&d.pickedAt){const cd=fmt(6*3600000-(now-d.pickedAt));if(cd)cdEl.textContent=cd;}});
+  SC.forEach(({key})=>{const d=spiralData[key];const s=discordSightings[key];const DESPAWN=50*60000;const spEl=document.getElementById('sp_'+key);if(spEl){if(d.spawnedAt){const left=DESPAWN-(now-d.spawnedAt);const cd=fmt(left);if(cd)spEl.textContent=cd;else{spiralData[key].spawnedAt=null;save();renderSpiral();}}else if(s&&s.spottedAt&&(now-s.spottedAt)<DESPAWN){const left=DESPAWN-(now-s.spottedAt);const cd=fmt(left);if(cd)spEl.textContent=cd;else{discordSightings[key]=null;renderSpiral();}}}const cdEl=document.getElementById('scd_'+key);if(cdEl&&d.pickedAt){const cd=fmt(6*3600000-(now-d.pickedAt));if(cd)cdEl.textContent=cd;}});
   const n=new Date(),mins=n.getMinutes(),secs=n.getSeconds();
   const el=document.getElementById('nextCheckTimer');if(el)el.textContent=fmt((mins<30?30-mins:60-mins)*60000-secs*1000)||'00:00:00';
 }
