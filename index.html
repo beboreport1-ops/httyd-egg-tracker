@@ -122,7 +122,7 @@
     <strong>How Spiral Egg works:</strong><br>
     Every hour it re-rolls. <span class="highlight">1/100 chance</span> to spawn, <span class="highlight">99/100</span> to disappear. Timer is <strong>global</strong> — check every <strong>30 mins</strong>.<br><br>
     <strong>3 independent colors</strong> (Yellow, Blue, Red) — each on their own timer.<br>
-    Once spawned you have <strong>1 hour</strong> to pick it up. After pickup: <strong>6-hour personal cooldown</strong> for that color only.
+    Once spawned you have <strong>50 minutes</strong> to pick it up. After pickup: <strong>6-hour personal cooldown</strong> for that color only.
   </div>
   <div class="next-check">
     <div class="next-check-label">⏰ Next recommended check in</div>
@@ -218,7 +218,7 @@ function renderMapPins(){
   });
 }
 const SC=[{key:'yellow',label:'🟡 Yellow Spiral Egg',cls:'yellow'},{key:'blue',label:'🔵 Blue Spiral Egg',cls:'blue'},{key:'red',label:'🔴 Red Spiral Egg',cls:'red'}];
-const API_URL='https://spiral-logger--beboreport1.replit.app/api/spiral-sightings';
+const API_URL='https://cosmic-spiral-whisper.lovable.app/api/spiral-sightings';
 let discordSightings={yellow:null,blue:null,red:null};
 
 async function fetchSightings(){
