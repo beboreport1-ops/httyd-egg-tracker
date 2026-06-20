@@ -72,7 +72,7 @@
   .spiral-card.yellow .spiral-name{color:#f0e040;}.spiral-card.blue .spiral-name{color:var(--rare);}.spiral-card.red .spiral-name{color:var(--mythic);}
   .phase-badge{font-size:0.62rem;padding:2px 8px;border-radius:8px;font-weight:700;}
   .phase-badge.spawned{background:#2ecc7122;color:var(--common);border:1px solid #2ecc7144;}
-  .phase-badge.waiting{background:#ff444422;color:var(--mythic);border:1px solid #ff444444;}
+  .phase-badge.waiting{background:#ff444422;color:var(--mythic);border:1px solid #ff444444;}.phase-badge.collected{background:#f0a50022;color:var(--legendary);border:1px solid #f0a50044;}
   .spiral-timers{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
   .timer-box{background:#ffffff06;border:1px solid var(--border);border-radius:8px;padding:8px 10px;}
   .timer-box-label{font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;}
@@ -247,7 +247,7 @@ async function fetchSightings(){
 
 function fmtAgo(ms){const m=Math.floor(ms/60000);if(m<1)return 'just now';if(m<60)return `${m}m ago`;return `${Math.floor(m/60)}h ${m%60}m ago`;}
 function markSpawned(c){spiralData[c].spawnedAt=Date.now();save();renderSpiral();}
-function markPickedUp(c){spiralData[c].pickedAt=Date.now();spiralData[c].spawnedAt=null;save();renderSpiral();}
+function markPickedUp(c){spiralData[c].pickedAt=Date.now();spiralData[c].spawnedAt=null;discordSightings[c]=null;save();renderSpiral();}
 function resetSpiral(c){spiralData[c]={spawnedAt:null,pickedAt:null};save();renderSpiral();}
 function renderSpiral(){
   const now=Date.now();
@@ -255,7 +255,7 @@ function renderSpiral(){
     const d=spiralData[key],s=discordSightings[key];
     const DESPAWN=50*60000;const isSpawned=d.spawnedAt&&(now-d.spawnedAt)<DESPAWN;const hasActiveSighting=!!(s&&s.age<DESPAWN);
     const spawnLeft=d.spawnedAt?fmt(DESPAWN-(now-d.spawnedAt)):null,cdLeft=d.pickedAt?fmt(6*3600000-(now-d.pickedAt)):null;
-    const phase=isSpawned||hasActiveSighting?`<span class="phase-badge spawned">✅ SPAWNED</span>`:`<span class="phase-badge waiting">⏳ Waiting</span>`;
+    const isOnCooldown=!!(d.pickedAt&&(6*3600000-(now-d.pickedAt))>0);const phase=isOnCooldown?`<span class="phase-badge waiting">🥚 Collected</span>`:isSpawned||hasActiveSighting?`<span class="phase-badge spawned">✅ SPAWNED</span>`:`<span class="phase-badge waiting">⏳ Waiting</span>`;
     const spawnBox=isSpawned&&spawnLeft?`<div class="timer-box"><div class="timer-box-label">⏰ Despawns in</div><div class="timer-box-value active-time" id="sp_${key}">${spawnLeft}</div></div>`:hasActiveSighting?`<div class="timer-box"><div class="timer-box-label">⏰ Despawns in</div><div class="timer-box-value active-time" id="sp_${key}">${fmt(50*60000-(now-s.spottedAt))||'—'}</div></div>`:`<div class="timer-box"><div class="timer-box-label">⏰ Despawns in</div><div class="timer-box-value expired">—</div></div>`;
     const cdBox=cdLeft?`<div class="timer-box"><div class="timer-box-label">🔒 Your cooldown</div><div class="timer-box-value cooldown-time" id="scd_${key}">${cdLeft}</div></div>`:`<div class="timer-box"><div class="timer-box-label">🔒 Your cooldown</div><div class="timer-box-value expired">${d.pickedAt?'✅ Ready':'—'}</div></div>`;
     const discordRow=s?`<div class="discord-sighting fresh"><span class="ds-icon">💬</span><div class="ds-text">Spotted by <strong>${s.reportedBy}</strong> in Discord</div><span class="ds-time">${fmtAgo(s.age)}</span></div>`:'';
